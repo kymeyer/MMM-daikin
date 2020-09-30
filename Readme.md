@@ -35,9 +35,9 @@ var config = {
 | Option           | Description                                                                                                               |
 | ---------------- | ------------------------------------------------------------------------------------------------------------------------- |
 | `ipAddress`      | _Required_ Local IP address of the Daikin Device.                                                                         |
-| `updateInterval` | _Optional_ How often the content will be fetched. <br><br>**Type:** `int`(milliseconds) <br>Default 30000 (1/2 minute)      |
-| `animationSpeed` | _Optional_ Speed of the update animation. <br><br>**Type:** `int`(milliseconds) <br>Default 1000 milliseconds (1 second) |
-| `animationSpeed` | _Optional_ Show the outside temperature <br>Default: true                                                                 |
+| `updateInterval` | _Optional_ How often the content will be fetched. <br><br>**Type:** `int`(milliseconds) <br>Default 30000 (1/2 minute)    |
+| `animationSpeed` | _Optional_ Speed of the update animation. <br><br>**Type:** `int`(milliseconds) <br>Default 1000 milliseconds (1 second)  |
+| `animationSpeed` | _Optional_ Show the outside temperature <br><br>**Type:** `bool` <br>Default: true                                        |
 
 ## Known Issues
 
