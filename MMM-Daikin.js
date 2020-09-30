@@ -94,7 +94,7 @@
 					<i class="fas fa-sign-out-alt"></i> ${this.stats.outtemp} °
 				</td>
 			`;
-  if (renderouttemp) return outtempHtml;
+  if (self.config.renderouttemp) return outtempHtml;
   return;
 	},
   
