@@ -1,11 +1,18 @@
 {
   "TITLE": "MMM-Daikin",
   "LOADING": "Loading...",
+  "COLLECTING": "Requesting...",
   "ON": "On",
   "OFF": "Off",
   "AUTO": "Auto",
   "HEAT": "Heat",
   "COOL": "Cool",
   "DEHUM": "Dehum",
-  "FAN": "Fan"
+  "FAN": "Fan",
+  "FAN_SILENCE": "Silence",
+  "FAN_LVL_1": "Level 1",
+  "FAN_LVL_2": "Level 2",
+  "FAN_LVL_3": "Level 3",
+  "FAN_LVL_4": "Level 4",
+  "FAN_LVL_5": "Level 5"
 }

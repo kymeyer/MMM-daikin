@@ -1,11 +1,18 @@
 {
   "TITLE": "MMM-Daikin",
   "LOADING": "Laden...",
+  "COLLECTING": "Abfragen...",
   "ON": "An",
   "OFF": "Aus",
   "AUTO": "Auto",
   "HEAT": "Heizen",
   "COOL": "Kühlen",
   "DEHUM": "Entfeuchten",
-  "FAN": "Lüfter"
+  "FAN": "Lüfter",
+  "FAN_SILENCE": "LEISE",
+  "FAN_LVL_1": "Stufe 1",
+  "FAN_LVL_2": "Stufe 2",
+  "FAN_LVL_3": "Stufe 3",
+  "FAN_LVL_4": "Stufe 4",
+  "FAN_LVL_5": "Stufe 5"
 }

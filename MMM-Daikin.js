@@ -9,23 +9,82 @@
  
  Module.register('MMM-Daikin', {
 	defaults: {
-		ipAddress: '192.168.178.20', //default Adress
-		updateInterval: 30 * 1000, // 1 minute
+		devices: [
+			{
+				ipAddress: '192.168.178.20',
+				renderouttemp: true,
+                useGetToPost: false,
+            },
+		],
+		updateInterval: 1 * 5 * 1000, // 1 minute
 		animationSpeed: 1 * 1000, // 1 seconds
-    renderouttemp: true, // whether to show outside-Temperature
 	},
 
-	requiresVersion: '2.1.0',
+	icons: {
+        "status-off": "fa-toggle-off",
+        "status-on": "fa-toggle-on",
+        "mode-fan": "fa-retweet",
+        "mode-heat": "fa-sun",
+        "mode-cool": "fa-snowflake",
+        "mode-auto": "fa-font",
+        "mode-dehumidify": "fa-droplet-slash",
+        "fan-speed": "fa-fan",
+        "outdoor-temp": "fa-cloud-sun",
+        "indoor-temp": "fa-thermometer-half",
+        "target-temp": "fa-crosshairs",
+		"dir-stopped": "fa-arrow-down-up-across-line",
+		"dir-vertical": "fa-arrows-up-down",
+		"dir-horizontal": "fa-arrows-left-right",
+		"dir-both": "fa-arrows-up-down-left-right",
+    },
+
+	fanRateValue: {
+        "A": "AUTO",
+        "B": "FAN_SILENCE",
+        "3": "FAN_LVL_1",
+        "4": "FAN_LVL_2",
+		"5": "FAN_LVL_3",
+		"6": "FAN_LVL_4",
+		"8": "FAN_LVL_5",
+    },
 
 	start() {
+		Log.log(`Starting module: ${this.name}`);
 		const self = this;
 
 		self.loaded = false;
-		self.stats = {};
-
 		self.sendSocketNotification('START', self.config);
-		Log.info('Starting module: ' + self.name);
+		self.devices = {};
+
+		self.config.devices.forEach((device, index) => {
+			if (!device.ipAddress) {
+				Log.error('MMM-Daikin: Missing device IP address in config found at index: ' + index);
+				self.error = 'Missing device IP address in config';
+			}
+			if (!self.devices[device.ipAddress]) {
+				self.devices[device.ipAddress] = { loaded: false, error: false, ipAddress: device.ipAddress, stats: {} };
+			}	
+		});
+
+		self.getDaikinStats();
+
+		setInterval(() => {
+        	self.getDaikinStats();
+        }, self.config.updateInterval);
+
+		
+    },
+		
+	getDaikinStats() {
+		const self = this;
+		for (let deviceId in self.devices) {
+			if (self.devices[deviceId].loaded === false) {
+				Log.log("MMM-Daikin: requesting stats for device: " + deviceId);
+				self.sendSocketNotification('MMM_DAIKIN_GETSTATS', self.devices[deviceId]);
+			}
+		}
 	},
+
 
 	getDom() {
 		const self = this;
@@ -65,175 +124,143 @@
 
 		let wrapper = document.createElement('table');
 		wrapper.className = 'small';
-		wrapper.innerHTML = `
-			<tr>
-        ${self.renderName()}
-        ${self.renderPower()}
-        ${self.renderTemp()}
-      </tr>
-      <tr>
-				${self.renderMode()}
-        ${self.renderFan()}
-        ${self.renderInTemp()}
-        ${self.renderTargetTemp()}
+		for (let deviceId in self.devices) {
+			if (self.devices[deviceId].loaded) {
+
+				let firstRow = self.renderLoadedDeviceFirstRow(self.devices[deviceId]);
+				wrapper.appendChild(firstRow);
 				
-			</tr>
-		`;
+
+				wrapper.appendChild(self.renderLoadedDeviceSecondRow(self.devices[deviceId]));
+			}
+			else {
+				let waitingRow = self.renderWaitingForDevice(deviceId);
+				wrapper.appendChild(waitingRow);
+			}
+		}
 
 		return wrapper;
 	},
 
-	renderName() {
-		return `<td class="name">${this.stats.name}</td>`;
-	},
-  
-  renderTemp() {
-    const self = this;
-		let outtempHtml = `
-				<td class="bin title dimmed">
-					<i class="fas fa-sign-out-alt"></i> ${this.stats.outtemp} °
-				</td>
-			`;
-  if (self.config.renderouttemp) return outtempHtml;
-  return;
-	},
-  
-  renderPower() {
+	renderWaitingForDevice(deviceId) {
 		const self = this;
 
-		let statusHtml = `
-				<td class="bin title dimmed">
-					<i class="fas fa-toggle-off"></i> ${self.translate('OFF')}
-				</td>
-			`;
-		if (self.stats.power) {
-			statusHtml = `
-				<td class="bin title bright">
-					<i class="fas fa-toggle-on"></i> ${self.translate('ON')}
-				</td>
-			`;
-		}
+		let wrapper = document.createElement('tr');
+		wrapper.className = 'xsmall';
+		wrapper.innerHTML = `
+			<td class="loading xsmall">AC@${deviceId}</td>
+			<td ></td>
+			<td colspan="3" class="dimmed light xsmall">${this.translate("COLLECTING")}</td>
+		`;
+		return wrapper;
 
-
-		return statusHtml;
 	},
-  
-   renderMode() {
+
+	renderLoadedDeviceFirstRow(device) {
 		const self = this;
 
-		let modeHtml = "";
-    switch (self.stats.mode) {
+		let wrapper = document.createElement('tr');
+		wrapper.className = 'xsmall';
+		wrapper.innerHTML = `
+			<td class="name xsmall" rowspan="2">${device.stats.name}</td>
+			<td></td>
+			${self.renderPower(device.stats.power)}
+			${self.renderItem("indoor-temp", `${device.stats.intemp}°`)}
+			${self.renderItem("outdoor-temp", `${device.stats.outtemp}°`)}
+		`;
+		return wrapper;
+	},
+
+	renderLoadedDeviceSecondRow(device) {
+		const self = this;
+
+		let wrapper = document.createElement('tr');
+		wrapper.className = 'xsmall noborder';
+		wrapper.innerHTML = `
+			
+			${self.renderMode(device.stats.mode, device.stats.power)}
+			${self.renderItem("fan-speed", self.translate(self.fanRateValue[device.stats.fanrate]), !device.stats.power)}
+			${self.renderFanDir(device.stats.fandir, device.stats.power)}
+			${self.renderItem("target-temp", `${device.stats.targettemp}°`, !device.stats.power)}
+		`;
+		return wrapper;
+	},
+
+	renderItem (iconToUse, value, dimmed) {
+        return `
+              <td class="bin title xsmall ${dimmed ? "dimmed" : "bright"}">
+                  <i class="fas ${this.icons[iconToUse]}"></i> ${value}
+              </td>
+          `;
+    },
+
+	renderPower(power) {
+		return power ? this.renderItem("status-on", this.translate("ON"), false) : this.renderItem("status-off", this.translate("OFF"), true);
+	},
+
+	renderMode(mode, power) {
+		switch (mode) {
 			case 0:
-				modeHtml = `
-        <td class="bin title dimmed">
-					<i class="fa fa-font"></i> ${self.translate('AUTO')}
-				</td>
-        `;
-				break;
-      case 1:
-				modeHtml = `
-        <td class="bin title dimmed">
-					<i class="fa fa-font"></i> ${self.translate('AUTO')} 
-				</td>
-        `;
-				break;
-      case 7:
-				modeHtml = `
-        <td class="bin title dimmed">
-					<i class="fa fa-font"></i> ${self.translate('AUTO')}
-				</td>
-        `;
-			break;
-      case 2:
-				modeHtml = `
-        <td class="bin title dimmed">
-					<i class="fa fa-tint"></i> ${self.translate('DEHUM')} 
-				</td>
-        `;
-				break;
-      case 3:
-				modeHtml = `
-        <td class="bin title dimmed">
-					<i class="fa fa-asterisk"></i> ${self.translate('COOL')} 
-				</td>
-        `;
-			break;
-      case 4:
-				modeHtml = `
-        <td class="bin title dimmed">
-					<i class="fa fa-sun-o"></i> ${self.translate('HEAT')} 
-				</td>
-        `;
-			break;
-      case 6:
-				modeHtml = `
-        <td class="bin title dimmed">
-					<i class="fa fa-retweet"></i> ${self.translate('FAN')}
-				</td>
-        `;
-			break;
-		}          
-		return modeHtml;
+				return this.renderItem("mode-auto", this.translate("AUTO"), !power);
+			case 1:
+				return this.renderItem("mode-auto", this.translate("AUTO"), !power);
+			case 7:
+				return this.renderItem("mode-auto", this.translate("AUTO"), !power);
+			case 2:
+				return this.renderItem("mode-dehumidify", this.translate("DEHUM'"), !power);
+			case 3:
+				return this.renderItem("mode-cool", this.translate("COOL"), !power);
+			case 4:
+				return this.renderItem("mode-heat", this.translate("HEAT"), !power);
+			case 6:
+				return this.renderItem("mode-fan", this.translate("FAN"), !power);
+		}
 	},
-  
-  renderInTemp() {
-    const self = this;
-    
-			let intempHtml = `
-				<td class="bin title bright">
-					<i class="fas fa-thermometer-half"></i> ${self.stats.intemp}°
-				</td>
-			`;
 
-		return intempHtml;
-  },
-  
-  renderTargetTemp() {
-    const self = this;
-    
-      let targettempHtml ="";
-      if (self.stats.mode != 6 && self.stats.mode != 2)
-			targettempHtml = `
-				<td class="bin title bright">
-					<i class="fas fa-share-square"></i> ${self.stats.targettemp}°
-				</td>
-			`;
-
-		return targettempHtml;
-  },
-  
-  renderFan() {
-    const self = this;
-    
-			let fanHtml = `
-				<td class="bin title bright">
-					<i class="fas fa-wind"></i> ${self.stats.fanrate}
-				</td>
-			`;
-
-		return fanHtml;
-  },
+	renderFanDir(fandir, power) {
+		switch (fandir) {
+			case 0:
+				return this.renderItem("dir-stopped", this.translate("OFF"), !power);
+			case 1:
+				return this.renderItem("dir-vertical", "V", !power);
+			case 2:
+				return this.renderItem("dir-horizontal", "H", !power);
+			case 3:
+				return this.renderItem("dir-both", "H/V", !power);
+		}
+	},
 
 
 	socketNotificationReceived(notification, payload) {
-		const self = this;
 
+		self = this;
 		switch (notification) {
-			case 'STATS':
-				self.loaded = true;
-				self.stats = payload;
+			case 'MMM_DAIKIN_STATS':
+				this.loaded = true;
+				let deviceId = payload.ipAddress;
+				self.devices[deviceId].stats = payload;
+				self.devices[deviceId].error = false;
+				self.devices[deviceId].loaded = true;
 				break;
-			case 'ERROR':
-				self.error = payload;
+			case 'MMM_DAIKIN_ERROR':
+				let deviceIdError = payload.ipAddress;
+				self.devices[deviceIdError].error = true;
+				self.devices[deviceIdError].stats = payload;
 				break;
 		}
 
-		this.updateDom(self.config.animationSpeed);
+		if (this.loaded) {
+			this.updateDom(self.config.animationSpeed);
+		}
 	},
 
 	getScripts() {
 		return [];
 	},
+
+	getStyles: function() {
+        return [ "MMM-Daikin.css" ];
+    },
 
 	getTranslations() {
 		return {

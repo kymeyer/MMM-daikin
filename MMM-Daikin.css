@@ -1,0 +1,24 @@
+.MMM-Daikin table {
+    border-collapse: collapse;
+    border-spacing: 2px 2px;
+}
+
+.MMM-Daikin td {
+    padding: 5px 2px 0px 2px;
+}
+
+.MMM-Daikin td.name {
+    text-align: left;
+    vertical-align: middle;
+    padding-right: 10px;
+}
+
+.MMM-Daikin tr:not(:first-child) {
+    padding-top: 3px;
+    border-top: 1px solid #666;
+}
+
+.MMM-Daikin tr.noborder {
+    border-top: 0px;
+    padding-top: 0px;
+}

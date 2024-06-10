@@ -5,100 +5,72 @@
  * MIT Licensed.
  */
 
-const NodeHelper = require('node_helper');
-const DaikinAC = require('daikin-controller');
 
-const REQUIRED_FIELDS = ['ipAddress'];
-const DAIKIN_STATS = ['bin', 'name', 'batPct', 'cleanMissionStatus'];
+const DaikinAC = require("daikin-controller");
+const Log = require("logger");
+const NodeHelper = require("node_helper");
+
 
 module.exports = NodeHelper.create({
-	start: function() {
+	
+  start() {
 		const self = this;
-
-		self.started = false;
-		self.config = [];
 		self.stats = {};
-    console.log ("MMM-Daikin NodeHelper created...");
-    
+    self.config = [];
+    Log.log(`Starting node helper: ${this.name}`); 
 	},
 
-	socketNotificationReceived: function(notification, payload) {
+	socketNotificationReceived(notification, payload) {
 		const self = this;
-    //console.log ("MMM-Daikin socketNotificationReceived");
     
-		switch (notification) {
-			case 'START':
-				self.handleStartNotification(payload);
+    if (notification === "START") {
+      self.config = payload;
+    }
+    
+    if (notification === "MMM_DAIKIN_GETSTATS") {
+			self.handleStartNotification(payload);
 		}
 	},
 
-	handleStartNotification: function(payload) {
+	handleStartNotification(payload) {
 		const self = this;
-    console.log ("MMM-Daikin handleStartNotification");
 
-	//	if (self.started) {
-	//		return;
-	//	}
+    var options = {}; 
 
-		self.config = payload;
-    self.started = true;
-    
-    self.updateStats();
+    var daikin =  new DaikinAC.DaikinAC(payload.ipAddress, options, function(err) {
+      if (err) {
+        Log.error("MMM-Daikin: Could not connect to A/C at "+payload.ipAddress+": "+err);
+        Object.assign(self.stats, {
+          ipAddress: payload.ipAddress,
+          lasterror: err,
+       });
+        self.sendSocketNotification("MMM_DAIKIN_ERROR", self.stats);
+      }
+      else {
+        Log.log("MMM-Daikin: Connection established to A/C at "+payload.ipAddress+"("+daikin.currentCommonBasicInfo.name+")...");
 
-    
-    },
-    
-    updateStats: function() {
-		const self = this;
-    
-    var options = {'logger': console.log}; // optional logger method to get debug logging
-    
-    var daikin =  new DaikinAC.DaikinAC(
-     self.config.ipAddress,
-     options,
-     function(err_gen) {
-    // daikin.currentCommonBasicInfo - contains automatically requested basic device data
-    // daikin.currentACModelInfo - contains automatically requested device model data
-    if (err_gen) {
-        //console.error(err_gen);
-        //self.sendSocketNotification('ERROR', err_gen);
-        //err_gen = null;
-        self.scheduleUpdate();
-    }
-    else {
-        //console.log("BASIC: "+JSON.stringify(daikin.currentCommonBasicInfo));
-        self.started = true;
         daikin.setUpdate(self.config.updateInterval, function(err) {
-            // catch error
-            if (err) {
-              //console.error(err);
-              //self.sendSocketNotification('ERROR', err);
-              daikin.stopUpdate();
-              self.scheduleUpdate();
-            }
-            else {
-              console.log(JSON.stringify(daikin.currentACControlInfo));
-              console.log(JSON.stringify(daikin.currentACSensorInfo));
-              Object.assign(self.stats, {
-				        name: daikin.currentCommonBasicInfo.name,
-                power: daikin.currentACControlInfo.power,
-                mode: daikin.currentACControlInfo.mode,
-                intemp: daikin.currentACSensorInfo.indoorTemperature,
-                outtemp: daikin.currentACSensorInfo.outdoorTemperature,  
-                targettemp: daikin.currentACControlInfo.targetTemperature,
-                fanrate: daikin.currentACControlInfo.fanRate,
-			       });
-             //console.log("MMM-DAIKIN: Sending STATS...");
-             self.sendSocketNotification('STATS', self.stats);
-            }        
+          if (err) {
+            Log.error("MMM-Daikin: Could not get details for A/C at "+payload.ipAddress+"("+daikin.currentCommonBasicInfo.name+"): "+err);
+          }
+          else {
+            Object.assign(self.stats, {
+              ipAddress: payload.ipAddress,
+              name: daikin.currentCommonBasicInfo.name,
+              power: daikin.currentACControlInfo.power,
+              mode: daikin.currentACControlInfo.mode,
+              fandir: daikin.currentACControlInfo.fanDirection,
+              intemp: daikin.currentACSensorInfo.indoorTemperature,
+              outtemp: daikin.currentACSensorInfo.outdoorTemperature,  
+              targettemp: daikin.currentACControlInfo.targetTemperature,
+              fanrate: daikin.currentACControlInfo.fanRate,
+           });
+           //Log.log("MMM-Daikin: Stats for A/C at "+payload.ipAddress+"("+daikin.currentCommonBasicInfo.name+")..."+JSON.stringify(self.stats));
+           self.sendSocketNotification('MMM_DAIKIN_STATS', self.stats);
+          }
         });
-    }
+      }
+      
     });
-	}, 
-  
-  scheduleUpdate() {
-		const self = this;
-    setTimeout(function(){ self.updateStats(); }, self.config.updateInterval);
-	},
-
+  }
 });

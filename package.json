@@ -1,10 +1,10 @@
 {
   "name": "mmm-daikin",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Magic Mirror interaction with Daikin climate devices",
   "main": "MMM-Daikin.js",
   "dependencies": {
-    "daikin-controller": "^1.2.0"
+    "daikin-controller": "^2.1.0"
   },
   "devDependencies": {},
   "scripts": {
