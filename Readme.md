@@ -25,7 +25,7 @@ var config = {
       config: {
 	      devices: [
 			    {
-				    ipAddress: '192.168.100.1', // IO of AC Unit 1
+				    ipAddress: '192.168.100.1', // IP of AC Unit 1
           },
 			    {
 				    ipAddress: '192.168.100.2', // IP of AC Unit 2
@@ -52,8 +52,8 @@ var config = {
 | `animationSpeed` | _Optional_ Speed of the update animation. <br><br>**Type:** `int`(milliseconds) <br>Default 1000 milliseconds (1 second)  |
 
 ## Changelog
-2020-09-30 (v0.0.1) - Initial Version, ability to monitor one AC unit
-2024-06-10 (v0.0.2) - Updated Version, ability to monitor more than one AC unit, better overall performance
+- 2020-09-30 (v0.0.1) - Initial Version, ability to monitor one AC unit
+- 2024-06-10 (v0.0.2) - Updated Version, ability to monitor more than one AC unit, better overall performance
 
 ## Known Issues
 
